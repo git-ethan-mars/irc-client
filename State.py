@@ -1,0 +1,10 @@
+import enum
+class State(enum.Enum):
+    JOINING_CHANNEL = 1
+    JOINING_SERVER = 2
+    LISTENING = 3
+    RECEIVING_CHANNELS = 4
+    RECEIVING_USERS = 5
+    CLOSE_CONNECTION = 6
+
+

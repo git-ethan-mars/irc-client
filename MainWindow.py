@@ -5,12 +5,13 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPus
 
 class MainWindow(QMainWindow):
 
-    def __init__(self, main_window, client):
-        super(MainWindow, self).__init__()
-        self.client = client
-        self.main_window = main_window
-        self.main_window_init()
-        self.central_widget = QWidget(main_window)
+    def __init__(self):
+        super().__init__()
+        self.controller = None
+        self.setObjectName('MainWindow')
+        self.resize(826, 449)
+        self.setStyleSheet('background-color: rgb(202, 255, 201);')
+        self.central_widget = QWidget(self)
         self.central_widget.setObjectName('centralwidget')
         self.horizontalLayout_3 = QHBoxLayout(self.central_widget)
         self.horizontalLayout_3.setObjectName('horizontalLayout_3')
@@ -45,21 +46,16 @@ class MainWindow(QMainWindow):
         self.verticalLayout.setStretch(1, 18)
         self.verticalLayout.setStretch(2, 1)
         self.horizontalLayout_3.addLayout(self.verticalLayout)
-        main_window.setCentralWidget(self.central_widget)
+        self.setCentralWidget(self.central_widget)
         self._translate = QtCore.QCoreApplication.translate
         self.set_translate()
 
-    def main_window_init(self):
-        self.main_window.setObjectName('MainWindow')
-        self.main_window.resize(826, 449)
-        self.main_window.setStyleSheet('background-color: rgb(202, 255, 201);')
-
     def set_translate(self):
-        self.main_window.setWindowTitle(self._translate('MainWindow', 'IRC-client'))
+        self.setWindowTitle(self._translate('MainWindow', 'IRC-client'))
         self.connect_button.setText(self._translate('MainWindow', 'Connect'))
         self.channel_line.setText(self._translate('MainWindow', 'Type your channel'))
         self.input_line.setText(self._translate('MainWindow', 'Type your message'))
-        QtCore.QMetaObject.connectSlotsByName(self.main_window)
+        QtCore.QMetaObject.connectSlotsByName(self)
 
     def connect_button_init(self):
         size_policy = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
@@ -76,7 +72,7 @@ class MainWindow(QMainWindow):
         self.connect_button.setObjectName('connect_button')
         self.horizontalLayout.addWidget(self.connect_button)
         self.connect_button.clicked.connect(
-            lambda: self.client.connect(self.fill_user_list, self.chat, self.channel_line))
+            lambda: self.controller.connect(self.channel_line))
 
     def channel_line_init(self):
         size_policy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
@@ -121,10 +117,12 @@ class MainWindow(QMainWindow):
         self.input_line.setFont(font)
         self.input_line.setStyleSheet('background-color: rgb(255, 255, 255);')
         self.input_line.setObjectName('input_line')
-        self.input_line.returnPressed.connect(lambda: self.client.send_text(self.input_line, self.chat))
+        self.input_line.returnPressed.connect(lambda: self.controller.send_text(self.input_line, self.chat))
 
     def fill_user_list(self, users):
         model = QtGui.QStandardItemModel()
         self.user_list.setModel(model)
         for elem in users:
             model.appendRow(QtGui.QStandardItem(elem))
+
+
