@@ -25,7 +25,6 @@ class LogInWindow(QMainWindow):
         self.form_layout.setWidget(0, QFormLayout.FieldRole, self.server_line)
         self.nick_line = QLineEdit(self.central_widget)
         self.nick_line_init()
-        self.nick_line.setText("azaza123")
         self.form_layout.setWidget(2, QFormLayout.FieldRole, self.nick_line)
         self.push_button = QPushButton(self.central_widget)
         self.push_button_init()
