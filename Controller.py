@@ -1,9 +1,10 @@
+import logging
 import re
 import socket
 from threading import Thread
 
 from PyQt5.QtWidgets import QMessageBox
-
+from MessageLogger import MessageLogger
 from Client import Client
 from State import State
 
@@ -27,6 +28,7 @@ class Controller:
         self._users = []
         self._channels = []
         self._data = []
+        self._logger = MessageLogger()
 
     def try_join_server(self, server, nick):
         if nick:
@@ -69,15 +71,15 @@ class Controller:
         self._data = []
         return channels
 
-    def send_text(self, input_line, chat):
+    def send_text(self, chat, input_line):
         if input_line.text() and self.client.channel and not self.client.is_problem_happen:
             if input_line.text() == "/list":
                 channels = sorted(set(self.get_channels()))[1::]
-                # print(channels)
                 chat.append(" ".join(channels))
             else:
                 self.client.send_message(input_line.text())
                 chat.append(f"{self.client.nick}: {input_line.text()}")
+            logging.info(f"{self.client.nick}: {input_line.text()}")
             input_line.setText("")
 
     def connect(self, channel_line):
@@ -95,6 +97,7 @@ class Controller:
                     pass
                 self.window.channel_line.setText(self.client.channel)
                 self.window.chat.clear()
+                self._logger.filename = f"log/{channel}.txt"
                 self.client.state = State.LISTENING
                 if not self.client.is_problem_happen:
                     self.client.state = State.RECEIVING_USERS
@@ -113,7 +116,7 @@ class Controller:
         while True:
             try:
                 line = self.client.socket.recv(1024).decode('utf-8')
-                # print(line)
+                print(line)
             except ConnectionAbortedError:
                 break
             except UnicodeDecodeError:
@@ -165,6 +168,8 @@ class Controller:
                 elif line.split()[1] == "PRIVMSG":
                     self.window.chat.append(str(line.split()[0].split("!")[0][1::]) + ": " +
                                             str(line.split(f"PRIVMSG {self.client.channel} :")[-1].strip("\r\n")))
+                    logging.info(str(line.split()[0].split("!")[0][1::]) + ": " +
+                                 str(line.split(f"PRIVMSG {self.client.channel} :")[-1].strip("\r\n")))
             elif self.client.state == State.RECEIVING_CHANNELS:
                 if "End of /LIST" in line:
                     self._data.append(line)

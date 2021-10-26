@@ -117,7 +117,7 @@ class MainWindow(QMainWindow):
         self.input_line.setFont(font)
         self.input_line.setStyleSheet('background-color: rgb(255, 255, 255);')
         self.input_line.setObjectName('input_line')
-        self.input_line.returnPressed.connect(lambda: self.controller.send_text(self.input_line, self.chat))
+        self.input_line.returnPressed.connect(lambda: self.controller.send_text(self.chat,self.input_line))
 
     def fill_user_list(self, users):
         model = QtGui.QStandardItemModel()
