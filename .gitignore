@@ -115,6 +115,3 @@ dmypy.json
 
 # IDE configurations
 .idea/
-
-# log files
-log/*.txt
