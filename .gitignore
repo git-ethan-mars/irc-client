@@ -117,4 +117,4 @@ dmypy.json
 .idea/
 
 # log files
-*.txt
+log/*.txt
