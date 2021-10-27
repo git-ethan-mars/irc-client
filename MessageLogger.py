@@ -10,7 +10,7 @@ class MessageLogger:
         return self._filename
 
     @filename.setter
-    def filename(self, value):
+    def filename(self, value : str):
         self._filename = value
         logging.basicConfig(filename=self.filename, filemode='a+', format='%(asctime)s - %(message)s',
                             level=logging.INFO)

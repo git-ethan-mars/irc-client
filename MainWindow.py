@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
         self.input_line.setObjectName('input_line')
         self.input_line.returnPressed.connect(lambda: self.controller.send_text(self.chat,self.input_line))
 
-    def fill_user_list(self, users):
+    def fill_user_list(self, users : list):
         model = QtGui.QStandardItemModel()
         self.user_list.setModel(model)
         for elem in users:

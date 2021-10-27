@@ -13,7 +13,7 @@ class Client:
         self.state = None
         self.users = None
 
-    def join_server(self, server, nick):
+    def join_server(self, server: list, nick: str):
         self.socket.connect((server[0], int(server[1])))
         self.server = server
         self.nick = nick
@@ -23,13 +23,13 @@ class Client:
                 'utf-8'))
         self.socket.send((f"NICK " + self.nick + "\r\n").encode('utf-8'))
 
-    def join_channel(self, channel):
+    def join_channel(self, channel: str):
         self.socket.send((f"JOIN " + channel + "\r\n").encode('utf-8'))
 
     def get_users(self):
         self.socket.send((f"NAMES " + self.channel + "\r\n").encode('utf-8'))
 
-    def send_message(self, message):
+    def send_message(self, message: str):
         self.socket.send((f"PRIVMSG " + self.channel + " :" + message + "\r\n").encode('utf-8'))
 
     def disconnect(self):
@@ -40,3 +40,6 @@ class Client:
 
     def get_channels_list(self):
         self.socket.send((f"LIST " + "\r\n").encode('utf-8'))
+
+    def quit(self):
+        self.socket.send((f"QUIT :Bye!" + "\r\n").encode('utf-8'))
