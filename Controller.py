@@ -49,7 +49,7 @@ class Controller:
                     else:
                         create_warning(self._warning_text)
                         self._client.state = State.CLOSE_CONNECTION
-                        self._client.disconnect()
+                        self._client.quit()
                         self._client.socket.close()
                         self._client.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 else:

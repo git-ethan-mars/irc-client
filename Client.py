@@ -32,8 +32,6 @@ class Client:
     def send_message(self, message: str):
         self.socket.send((f"PRIVMSG " + self.channel + " :" + message + "\r\n").encode('utf-8'))
 
-    def disconnect(self):
-        self.socket.send((f"QUIT" + "\r\n").encode('utf-8'))
 
     def pong(self):
         self.socket.send((f"PONG" + "\r\n").encode('utf-8'))
