@@ -1,18 +1,3 @@
-# Based on https://github.com/actions/starter-workflows/blob/56c93ff7521bd818b4186cd504aba6e2b7b42643/ci/python-app.yml
-
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
-# Workflow это по сути последовательность действий, которая выполняется по
-# каким-то определенным условиям.
-#
-# Например, можно автоматически запускать тесты, на PR'ы или при мерже в мастер.
-# Таким образом можно гарантировать, что очередные наши изменения ничего не сломали.
-#
-# Workflow на github'е описываются в файле формата YAML (см. https://yaml.org/) по определенному формату.
-# Полное описание синтаксиса для github'а есть здесь: https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions
-# Но и без него всё должно быть довольно понятно.
-
 name: Run tests and show coverage
 
 on:
@@ -44,7 +29,7 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
+    - name: Test with unittest
       run: |
         python -m unittest
     - name: Check coverage
