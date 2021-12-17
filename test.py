@@ -38,49 +38,49 @@ class ClientTest(unittest.TestCase):
 
     def test_join_server(self):
         self.client.join_server(["localhost", 8888], "test")
-        self.client.socket.send("END SERVER\r\n".encode('utf-8'))
+        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
         self.assertEqual("USER test test test test\r\nNICK test\r\n", self.get_result())
 
     def test_join_channel(self):
         self.client.socket.connect(("localhost", 8888))
         channel = "#test"
         self.client.join_channel(channel)
-        self.client.socket.send("END SERVER\r\n".encode('utf-8'))
+        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
         self.assertEqual("JOIN " + channel + "\r\n", self.get_result())
 
     def test_get_users(self):
         self.client.socket.connect(("localhost", 8888))
         self.client.channel = "#qwerty"
         self.client.get_users()
-        self.client.socket.send("END SERVER\r\n".encode('utf-8'))
+        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
         self.assertEqual("NAMES #qwerty\r\n", self.get_result())
 
     def test_send_message(self):
         self.client.socket.connect(("localhost", 8888))
         self.client.channel = "#drive"
         self.client.send_message("KEKW")
-        self.client.socket.send("END SERVER\r\n".encode('utf-8'))
+        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
         self.assertEqual("PRIVMSG #drive :KEKW\r\n", self.get_result())
 
     def test_pong(self):
         self.client.socket.connect(("localhost", 8888))
         self.client.channel = "#qwer"
         self.client.pong()
-        self.client.socket.send("END SERVER\r\n".encode('utf-8'))
+        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
         self.assertEqual("PONG\r\n", self.get_result())
 
     def test_get_channels(self):
         self.client.socket.connect(("localhost", 8888))
         self.client.channel = "#pizza"
         self.client.get_channels_list()
-        self.client.socket.send("END SERVER\r\n".encode('utf-8'))
+        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
         self.assertEqual("LIST \r\n", self.get_result())
 
     def test_quit(self):
         self.client.socket.connect(("localhost", 8888))
         self.client.channel = "#pizza"
         self.client.quit()
-        self.client.socket.send("END SERVER\r\n".encode('utf-8'))
+        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
         self.assertTrue(self.get_result().startswith("QUIT"))
 
 
