@@ -115,3 +115,6 @@ dmypy.json
 
 # IDE configurations
 .idea/
+
+# Log
+log/

@@ -24,7 +24,8 @@ class Controller:
     def __init__(self, client: Client, window):
         self._client = client
         self.window = window
-        self._listener = None
+        self._listener = Thread(target=self.listen_server)
+
         self._warning_text = None
         self._users = []
         self._channels = []
@@ -37,9 +38,8 @@ class Controller:
             try:
                 if regex.fullmatch(server):
                     server = server.split(":")
-                    self._client.join_server(server, nick)
                     self._client.state = State.JOINING_SERVER
-                    self._listener = Thread(target=self.listen_server)
+                    self._client.join_server(server, nick)
                     self._listener.start()
                     while self._client.state == State.JOINING_SERVER:
                         pass
@@ -66,7 +66,7 @@ class Controller:
         self._client.state = State.RECEIVING_CHANNELS
         while self._client.state == State.RECEIVING_CHANNELS:
             pass
-        channels = re.findall(regex, " ".join(self._channels).replace("\n",""))
+        channels = re.findall(regex, " ".join(self._channels).replace("\n", ""))
         self._channels = []
         self._data = []
         return channels
@@ -78,7 +78,7 @@ class Controller:
                 chat.append(" ".join(channels))
             else:
                 self._client.send_message(input_line.text())
-                self.append_text_to_chat(self._client.nick,input_line.text())
+                self.append_text_to_chat(self._client.nick, input_line.text())
             input_line.setText("")
 
     def connect(self, channel_line: QLineEdit):
@@ -166,7 +166,7 @@ class Controller:
                 elif line.split()[1] == "PRIVMSG":
                     user = str(line.split()[0].split("!")[0][1::])
                     text = str(line.split(f"PRIVMSG {self._client.channel} :")[-1].strip("\r\n"))
-                    self.append_text_to_chat(user,text)
+                    self.append_text_to_chat(user, text)
             elif self._client.state == State.RECEIVING_CHANNELS:
                 if "End of /LIST" in line:
                     self._data.append(line)
@@ -177,11 +177,11 @@ class Controller:
             elif self._client.state == State.CLOSE_CONNECTION:
                 break
 
-    def end_program(self):
+    def close_connection(self):
         self._client.quit()
         self._client.socket.shutdown(socket.SHUT_RDWR)
         self._client.state = State.CLOSE_CONNECTION
 
-    def append_text_to_chat(self, user : str, text: str):
+    def append_text_to_chat(self, user: str, text: str):
         self.window.chat.append(f"{strftime('%H:%M:%S', localtime())} {user}: {text}")
         self._logger.info(f"{self._client.nick}: {text}")

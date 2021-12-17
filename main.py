@@ -22,7 +22,7 @@ def main():
         controller.window = current_window
         current_window.controller = controller
         current_window.show()
-        app.lastWindowClosed.connect(lambda: current_window.controller.end_program())
+        app.lastWindowClosed.connect(lambda: current_window.controller.close_connection())
         app.exec_()
 
 

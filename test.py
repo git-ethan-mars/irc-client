@@ -1,87 +1,73 @@
 import socket
 import threading
+import time
 import unittest
+from unittest.mock import patch
 
+import State
 from Client import Client
+from Controller import Controller
 
 
-def create_simple_server():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(("localhost", 8888))
-    s.listen(1)
-    clientsocket, address = s.accept()
-    while True:
-        data = clientsocket.recv(1024)
-        clientsocket.send(data)
-        if b"END SERVER\r\n" in data:
-            break
-    clientsocket.close()
-    s.close()
+class FakeWindow:
+    def __init__(self):
+        self.is_manual_exit = True
+
+    def close(self):
+        pass
 
 
-class ClientTest(unittest.TestCase):
+class TestController(unittest.TestCase):
+    def create_simple_server(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 8080))
+            s.settimeout(3)
+            s.listen(1)
+            try:
+                self.server_running = True
+                client_socket, address = s.accept()
+                print(f"New connection from {address}")
+                buffer = ""
+                while True:
+                    if f"NICK {self.controller._client.nick}" in buffer:
+                        self.controller._client.state = State.State.LISTENING
+                        self.controller._client.on_server = True
+                        break
+                    else:
+                        buffer += client_socket.recv(1024).decode('utf-8')
+                    print(buffer)
+                client_socket.shutdown(socket.SHUT_RDWR)
+                client_socket.close()
+            except socket.timeout:
+                pass
 
     def setUp(self) -> None:
-        self.client = Client()
-        threading.Thread(target=create_simple_server).start()
+        self.controller = Controller(Client(), FakeWindow())
+        threading.Thread(target=self.create_simple_server).start()
 
-    def tearDown(self) -> None:
-        self.client.socket.close()
+    @patch.object(threading.Thread, 'start')
+    @patch('Controller.create_warning')
+    def test_try_join(self, mock_create_warning,mock_thread_start):
+        self.server_running = False
+        while not self.server_running:
+            time.sleep(1)
+        self.controller.try_join_server("localhost:8080", "test123")
+        mock_thread_start.assert_called_once()
+        mock_create_warning.assert_not_called()
 
-    def get_result(self):
-        buffer = b""
-        while b"END SERVER\r\n" not in buffer:
-            data = self.client.socket.recv(1024)
-            buffer += data
-        return buffer.decode('utf-8').replace("END SERVER\r\n", "")
+    @patch.object(threading.Thread, 'start')
+    @patch('Controller.create_warning')
+    def test_try_join_with_incorrect_nick(self, mock_create_warning, mock_thread_start):
+        self.controller.try_join_server("localhost:8080", "")
+        mock_create_warning.assert_called_once()
+        mock_thread_start.assert_not_called()
 
-    def test_join_server(self):
-        self.client.join_server(["localhost", 8888], "test")
-        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
-        self.assertEqual("USER test test test test\r\nNICK test\r\n", self.get_result())
-
-    def test_join_channel(self):
-        self.client.socket.connect(("localhost", 8888))
-        channel = "#test"
-        self.client.join_channel(channel)
-        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
-        self.assertEqual("JOIN " + channel + "\r\n", self.get_result())
-
-    def test_get_users(self):
-        self.client.socket.connect(("localhost", 8888))
-        self.client.channel = "#qwerty"
-        self.client.get_users()
-        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
-        self.assertEqual("NAMES #qwerty\r\n", self.get_result())
-
-    def test_send_message(self):
-        self.client.socket.connect(("localhost", 8888))
-        self.client.channel = "#drive"
-        self.client.send_message("KEKW")
-        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
-        self.assertEqual("PRIVMSG #drive :KEKW\r\n", self.get_result())
-
-    def test_pong(self):
-        self.client.socket.connect(("localhost", 8888))
-        self.client.channel = "#qwer"
-        self.client.pong()
-        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
-        self.assertEqual("PONG\r\n", self.get_result())
-
-    def test_get_channels(self):
-        self.client.socket.connect(("localhost", 8888))
-        self.client.channel = "#pizza"
-        self.client.get_channels_list()
-        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
-        self.assertEqual("LIST \r\n", self.get_result())
-
-    def test_quit(self):
-        self.client.socket.connect(("localhost", 8888))
-        self.client.channel = "#pizza"
-        self.client.quit()
-        self.client.socket.sendall("END SERVER\r\n".encode('utf-8'))
-        self.assertTrue(self.get_result().startswith("QUIT"))
+    @patch.object(threading.Thread, 'start')
+    @patch('Controller.create_warning')
+    def test_try_join_incorrect_server(self, mock_create_warning, mock_thread_start):
+        self.controller.try_join_server("localhost:1", "test123")
+        self.assertEqual(len(mock_create_warning.call_args.args), 1)
+        self.assertEqual(mock_create_warning.call_args.args[0], "Invalid server")
 
 
 if __name__ == '__main__':
