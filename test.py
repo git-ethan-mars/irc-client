@@ -44,9 +44,12 @@ class TestController(unittest.TestCase):
         self.controller = Controller(Client(), FakeWindow())
         threading.Thread(target=self.create_simple_server).start()
 
+    def tearDown(self) -> None:
+        time.sleep(3)
+
     @patch.object(threading.Thread, 'start')
     @patch('Controller.create_warning')
-    def test_try_join(self, mock_create_warning,mock_thread_start):
+    def test_try_join(self, mock_create_warning, mock_thread_start):
         self.server_running = False
         while not self.server_running:
             time.sleep(1)
