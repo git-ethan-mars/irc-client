@@ -6,15 +6,18 @@ from Client import Client
 
 
 def create_simple_server():
-    with socket.create_server(("localhost", 8888)) as s:
-        s.listen(1)
-        client_socket, address = s.accept()
-        while True:
-            data = client_socket.recv(1024)
-            client_socket.send(data)
-            if b"END SERVER\r\n" in data:
-                break
-        client_socket.close()
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("localhost", 8888))
+    s.listen(1)
+    clientsocket, address = s.accept()
+    while True:
+        data = clientsocket.recv(1024)
+        clientsocket.send(data)
+        if b"END SERVER\r\n" in data:
+            break
+    clientsocket.close()
+    s.close()
 
 
 class ClientTest(unittest.TestCase):
