@@ -1,11 +1,12 @@
-import logging
 import re
 import socket
 from threading import Thread
 from time import localtime, strftime
+
 from PyQt5.QtWidgets import QMessageBox, QLineEdit, QTextEdit
-from MessageLogger import MessageLogger
+
 from Client import Client
+from MessageLogger import MessageLogger
 from State import State
 
 
@@ -60,24 +61,24 @@ class Controller:
             create_warning("Type your nick")
 
     def get_channels(self):
-        regex = re.compile("(?<=322 {0} )[#\w]*".format(self._client.nick))
+        regex = re.compile("(?<=322 {0} )[#\w\n]*".format(self._client.nick))
         self._client.get_channels_list()
         self._client.state = State.RECEIVING_CHANNELS
         while self._client.state == State.RECEIVING_CHANNELS:
             pass
-        channels = re.findall(regex, " ".join(self._channels))
+        channels = re.findall(regex, " ".join(self._channels).replace("\n",""))
         self._channels = []
         self._data = []
         return channels
 
     def send_text(self, chat: QTextEdit, input_line: QLineEdit):
         if input_line.text() and self._client.channel and not self._client.is_problem_happen:
-            if input_line.text() == "/list":
+            if input_line.text() == "/list" or input_line.text() == "/LIST":
                 channels = sorted(set(self.get_channels()))[1::]
                 chat.append(" ".join(channels))
             else:
                 self._client.send_message(input_line.text())
-                self.append_text_to_chat(input_line.text())
+                self.append_text_to_chat(self._client.nick,input_line.text())
             input_line.setText("")
 
     def connect(self, channel_line: QLineEdit):
@@ -95,7 +96,7 @@ class Controller:
                     pass
                 self.window.channel_line.setText(self._client.channel)
                 self.window.chat.clear()
-                self._logger.filename = f"log/{channel}.txt"
+                self._logger.set_filename(f"log/{channel}.txt")
                 self._client.state = State.LISTENING
                 if not self._client.is_problem_happen:
                     self._client.state = State.RECEIVING_USERS
@@ -114,6 +115,7 @@ class Controller:
         while True:
             try:
                 line = self._client.socket.recv(1024).decode('utf-8')
+                print(line)
             except ConnectionAbortedError:
                 break
             except UnicodeDecodeError:
@@ -137,9 +139,6 @@ class Controller:
             elif self._client.state == State.JOINING_CHANNEL:
                 if line.split()[1] == "470":
                     self._client.channel = line.split()[4]
-                elif "End of /NAMES list" in line:
-                    self._client.is_problem_happen = False
-                    self._client.state = State.LISTENING
                 elif "Invite only channel" in line or "you must be invited" in line:
                     self._client.is_problem_happen = True
                     self._warning_text = "Invite only channel"
@@ -148,6 +147,10 @@ class Controller:
                     self._client.is_problem_happen = True
                     self._warning_text = "You have been banned!"
                     self._client.state = State.LISTENING
+                elif "End of /NAMES list" in line:
+                    self._client.is_problem_happen = False
+                    self._client.state = State.LISTENING
+
             elif self._client.state == State.RECEIVING_USERS:
                 self._data.append(line)
                 if "End of /NAMES" in line:
@@ -161,8 +164,9 @@ class Controller:
                 if line.startswith("PING"):
                     self._client.pong()
                 elif line.split()[1] == "PRIVMSG":
-                    self.append_text_to_chat(str(line.split()[0].split("!")[0][1::]) + ": " +
-                                             str(line.split(f"PRIVMSG {self._client.channel} :")[-1].strip("\r\n")))
+                    user = str(line.split()[0].split("!")[0][1::])
+                    text = str(line.split(f"PRIVMSG {self._client.channel} :")[-1].strip("\r\n"))
+                    self.append_text_to_chat(user,text)
             elif self._client.state == State.RECEIVING_CHANNELS:
                 if "End of /LIST" in line:
                     self._data.append(line)
@@ -178,6 +182,6 @@ class Controller:
         self._client.socket.shutdown(socket.SHUT_RDWR)
         self._client.state = State.CLOSE_CONNECTION
 
-    def append_text_to_chat(self, text: str):
-        self.window.chat.append(f"{strftime('%H:%M:%S', localtime())} {self._client.nick}: {text}")
-        logging.info(f"{self._client.nick}: {text}")
+    def append_text_to_chat(self, user : str, text: str):
+        self.window.chat.append(f"{strftime('%H:%M:%S', localtime())} {user}: {text}")
+        self._logger.info(f"{self._client.nick}: {text}")

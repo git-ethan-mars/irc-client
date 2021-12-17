@@ -6,25 +6,22 @@ from Client import Client
 
 
 def create_simple_server():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("localhost", 8888))
-    s.listen(1)
-    clientsocket, address = s.accept()
-    while True:
-        data = clientsocket.recv(1024)
-        clientsocket.send(data)
-        if b"END SERVER\r\n" in data:
-            break
-    clientsocket.close()
-    s.close()
+    with socket.create_server(("localhost", 8888)) as s:
+        s.listen(1)
+        client_socket, address = s.accept()
+        while True:
+            data = client_socket.recv(1024)
+            client_socket.send(data)
+            if b"END SERVER\r\n" in data:
+                break
+        client_socket.close()
 
 
 class ClientTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        self.thread = threading.Thread(target=create_simple_server)
-        self.thread.start()
+        threading.Thread(target=create_simple_server).start()
 
     def tearDown(self) -> None:
         self.client.socket.close()

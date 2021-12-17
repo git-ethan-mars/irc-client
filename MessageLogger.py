@@ -3,14 +3,16 @@ import logging
 
 class MessageLogger:
     def __init__(self):
-        self._filename = None
+        self._logger = logging.getLogger("MessageLogger")
+        self._logger.setLevel(logging.INFO)
+        self._formatter = logging.Formatter('%(asctime)s - %(message)s')
 
-    @property
-    def filename(self):
-        return self._filename
+    def set_filename(self, filename: str):
+        if self._logger.handlers:
+            self._logger.handlers.clear()
+        fh = logging.FileHandler(filename)
+        fh.setFormatter(self._formatter)
+        self._logger.addHandler(fh)
 
-    @filename.setter
-    def filename(self, value : str):
-        self._filename = value
-        logging.basicConfig(filename=self.filename, filemode='a+', format='%(asctime)s - %(message)s',
-                            level=logging.INFO)
+    def info(self, text: str):
+        self._logger.info(text)
