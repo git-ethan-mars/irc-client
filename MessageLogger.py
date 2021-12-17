@@ -1,4 +1,5 @@
 import logging
+import os
 
 
 class MessageLogger:
@@ -6,6 +7,8 @@ class MessageLogger:
         self._logger = logging.getLogger("MessageLogger")
         self._logger.setLevel(logging.INFO)
         self._formatter = logging.Formatter('%(asctime)s - %(message)s')
+        if not os.path.isdir("log"):
+            os.mkdir("log")
 
     def set_filename(self, filename: str):
         if self._logger.handlers:
