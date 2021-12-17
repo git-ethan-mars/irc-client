@@ -26,7 +26,6 @@ class TestController(unittest.TestCase):
             try:
                 self.server_running = True
                 client_socket, address = s.accept()
-                print(f"New connection from {address}")
                 buffer = ""
                 while True:
                     if f"NICK {self.controller._client.nick}" in buffer:
@@ -35,7 +34,6 @@ class TestController(unittest.TestCase):
                         break
                     else:
                         buffer += client_socket.recv(1024).decode('utf-8')
-                    print(buffer)
                 client_socket.shutdown(socket.SHUT_RDWR)
                 client_socket.close()
             except socket.timeout:
