@@ -16,6 +16,7 @@ class MessageLogger:
         fh = logging.FileHandler(filename)
         fh.setFormatter(self._formatter)
         self._logger.addHandler(fh)
+        fh.close()
 
     def info(self, text: str):
         self._logger.info(text)

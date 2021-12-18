@@ -11,7 +11,6 @@ from MainWindow import MainWindow
 
 def main():
     client = Client()
-    client.create_socket()
     app = QApplication(sys.argv)
     current_window = LogInWindow()
     controller = Controller(client, current_window)

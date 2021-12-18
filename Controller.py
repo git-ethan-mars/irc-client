@@ -24,7 +24,7 @@ class Controller:
     def __init__(self, client: Client, window):
         self._client = client
         self.window = window
-        self._listener = Thread(target=self.listen_server)
+        self._listener = None
         self._warning_text = None
         self._users = []
         self._channels = []
@@ -39,6 +39,7 @@ class Controller:
                     server = server.split(":")
                     self._client.state = State.JOINING_SERVER
                     self._client.join_server(server, nick)
+                    self._listener = Thread(target=self.listen_server)
                     self._listener.start()
                     while self._client.state == State.JOINING_SERVER:
                         pass
@@ -48,24 +49,23 @@ class Controller:
                         self.window.close()
                     else:
                         create_warning(self._warning_text)
-                        self._client.state = State.CLOSE_CONNECTION
-                        self._client.quit()
-                        self._client.socket.close()
+                        self.close_connection()
                         self._client.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        self._client.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 else:
                     create_warning("Invalid server format")
-            except (socket.gaierror, OSError):
+            except (socket.gaierror, OSError) as e:
                 create_warning("Invalid server")
         else:
             create_warning("Type your nick")
 
     def get_channels(self):
-        regex = re.compile("(?<=322 {0} )[#\w\n]*".format(self._client.nick))
-        self._client.get_channels_list()
+        self._client.request_channels()
         self._client.state = State.RECEIVING_CHANNELS
         while self._client.state == State.RECEIVING_CHANNELS:
             pass
-        channels = re.findall(regex, " ".join(self._channels).replace("\n", ""))
+        channels = re.findall(re.compile("(?<=322 {0} )[#\w\n]*".format(self._client.nick)), " ".join(self._channels)
+                              .replace("\n", ""))
         self._channels = []
         self._data = []
         return channels
@@ -80,11 +80,19 @@ class Controller:
                 self.append_text_to_chat(self._client.nick, input_line.text())
             input_line.setText("")
 
-    def show_users(self):
+    def get_users(self) -> list:
         self._client.state = State.RECEIVING_USERS
-        self._client.get_users()
+        self._client.request_users()
         while self._client.state == State.RECEIVING_USERS:
             pass
+        regex = re.compile(f"(?<={self._client.channel} :)([^:]*)")
+        for line in self._data[:-1]:
+            for users in re.findall(regex, line):
+                for user in users.replace("\r\n", "").split():
+                    self._users.append(user)
+
+    def show_users(self):
+        self.get_users()
         self.window.fill_user_list(self._users)
         self._users = []
         self._data = []
@@ -117,12 +125,13 @@ class Controller:
         while True:
             try:
                 line = self._client.socket.recv(1024).decode('utf-8')
-                print(line)
             except ConnectionAbortedError:
                 break
             except UnicodeDecodeError:
                 continue
-            if self._client.state == State.JOINING_SERVER:
+            if self._client.state == State.CLOSE_CONNECTION or not line:
+                break
+            elif self._client.state == State.JOINING_SERVER:
                 if "This nickname is registered" in line:
                     self._client.on_server = False
                     self._warning_text = "This nickname is registered"
@@ -134,6 +143,10 @@ class Controller:
                 elif "Erroneous Nickname" in line:
                     self._client.on_server = False
                     self._warning_text = "Invalid nickname"
+                    self._client.state = State.LISTENING
+                elif "Nickname is already in use" in line:
+                    self._client.on_server = False
+                    self._warning_text = "Nickname is already in use"
                     self._client.state = State.LISTENING
                 elif "End of /MOTD" in line or "End of MOTD" in line:
                     self._client.on_server = True
@@ -156,11 +169,6 @@ class Controller:
             elif self._client.state == State.RECEIVING_USERS:
                 self._data.append(line)
                 if "End of /NAMES" in line:
-                    regex = re.compile(f"(?<={self._client.channel} :)([^:]*)")
-                    for line in self._data[:-1]:
-                        for users in re.findall(regex, line):
-                            for user in users.replace("\r\n", "").split():
-                                self._users.append(user)
                     self._client.state = State.LISTENING
             elif self._client.state == State.LISTENING:
                 if line.startswith("PING"):
@@ -176,14 +184,13 @@ class Controller:
                     self._client.state = State.LISTENING
                 else:
                     self._data.append(line)
-            elif self._client.state == State.CLOSE_CONNECTION:
-                break
 
     def close_connection(self):
         self._client.quit()
+        self._client.state = State.CLOSE_CONNECTION
+        self._listener.join()
         self._client.socket.shutdown(socket.SHUT_RDWR)
         self._client.socket.close()
-        self._client.state = State.CLOSE_CONNECTION
 
     def append_text_to_chat(self, user: str, text: str):
         self.window.chat.append(f"{strftime('%H:%M:%S', localtime())} {user}: {text}")
