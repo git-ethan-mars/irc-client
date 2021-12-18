@@ -54,7 +54,7 @@ class Controller:
                         self._client.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 else:
                     create_warning("Invalid server format")
-            except (socket.gaierror, OSError) as e:
+            except (socket.gaierror, OSError):
                 create_warning("Invalid server")
         else:
             create_warning("Type your nick")
@@ -86,8 +86,8 @@ class Controller:
         while self._client.state == State.RECEIVING_USERS:
             pass
         regex = re.compile(f"(?<={self._client.channel} :)([^:]*)")
-        for line in self._data[:-1]:
-            for users in re.findall(regex, line):
+        for line in self._data:
+            for users in re.findall(regex, line)[:-1]:
                 for user in users.replace("\r\n", "").split():
                     self._users.append(user)
 
@@ -162,13 +162,13 @@ class Controller:
                     self._client.is_problem_happen = True
                     self._warning_text = "You have been banned!"
                     self._client.state = State.LISTENING
-                elif "End of /NAMES list" in line:
+                elif "End of /NAMES list" or "End of NAMES list" in line:
                     self._client.is_problem_happen = False
                     self._client.state = State.LISTENING
 
             elif self._client.state == State.RECEIVING_USERS:
                 self._data.append(line)
-                if "End of /NAMES" in line:
+                if "End of /NAMES" or "End of NAMES list" in line:
                     self._client.state = State.LISTENING
             elif self._client.state == State.LISTENING:
                 if line.startswith("PING"):
@@ -178,7 +178,7 @@ class Controller:
                     text = str(line.split(f"PRIVMSG {self._client.channel} :")[-1].strip("\r\n"))
                     self.append_text_to_chat(user, text)
             elif self._client.state == State.RECEIVING_CHANNELS:
-                if "End of /LIST" in line:
+                if "End of /LIST" in line or "End of LIST" in line:
                     self._data.append(line)
                     self._channels = self._data
                     self._client.state = State.LISTENING
