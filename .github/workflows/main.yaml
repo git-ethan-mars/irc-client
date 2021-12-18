@@ -32,11 +32,7 @@ jobs:
     - name: Test with unittest
       run: |
         python -m unittest
-    # - name: Check coverage
-      # Здесь --cov=minesweeper выбирает директорию, для которой считать покрытие тестами
-      # run: |
-      #  pytest --cov=irc-client
-      # Дополнительно можно запустить pytest --cov=minesweeper --cov-report html:cov_html
-      # И научиться загружать отчёт из папки cov_html в артифакты workflow
-      # В этом поможет пример из документации:
-      # https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#packaging-workflow-data-as-artifacts
+    - name : Coverage
+      run: |
+        pip install coverage
+        coverage run -m unittest
