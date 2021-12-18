@@ -25,7 +25,6 @@ class Controller:
         self._client = client
         self.window = window
         self._listener = Thread(target=self.listen_server)
-
         self._warning_text = None
         self._users = []
         self._channels = []
