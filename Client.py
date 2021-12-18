@@ -4,14 +4,17 @@ import socket
 class Client:
     def __init__(self):
         self.nick = None
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket = None
         self.server = None
         self.channel = None
         self.on_server = False
         self.is_problem_happen = False
         self.state = None
         self.users = None
+
+    def create_socket(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     def join_server(self, server: list, nick: str):
         self.socket.connect((server[0], int(server[1])))
@@ -31,7 +34,6 @@ class Client:
 
     def send_message(self, message: str):
         self.socket.sendall((f"PRIVMSG " + self.channel + " :" + message + "\r\n").encode('utf-8'))
-
 
     def pong(self):
         self.socket.sendall((f"PONG" + "\r\n").encode('utf-8'))

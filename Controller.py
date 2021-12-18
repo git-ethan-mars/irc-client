@@ -81,9 +81,18 @@ class Controller:
                 self.append_text_to_chat(self._client.nick, input_line.text())
             input_line.setText("")
 
-    def connect(self, channel_line: QLineEdit):
-        if channel_line.text():
-            channel = channel_line.text().split()[0].lower()
+    def show_users(self):
+        self._client.state = State.RECEIVING_USERS
+        self._client.get_users()
+        while self._client.state == State.RECEIVING_USERS:
+            pass
+        self.window.fill_user_list(self._users)
+        self._users = []
+        self._data = []
+
+    def connect(self, channel: str):
+        if channel:
+            channel = channel.split()[0].lower()
             if not channel.startswith('#'):
                 channel = '#' + channel
             if self._client.channel == channel:
@@ -99,13 +108,7 @@ class Controller:
                 self._logger.set_filename(f"log/{channel}.txt")
                 self._client.state = State.LISTENING
                 if not self._client.is_problem_happen:
-                    self._client.state = State.RECEIVING_USERS
-                    self._client.get_users()
-                    while self._client.state == State.RECEIVING_USERS:
-                        pass
-                    self.window.fill_user_list(self._users)
-                    self._users = []
-                    self._data = []
+                    self.show_users()
                 else:
                     create_warning(self._warning_text)
         else:
@@ -180,6 +183,7 @@ class Controller:
     def close_connection(self):
         self._client.quit()
         self._client.socket.shutdown(socket.SHUT_RDWR)
+        self._client.socket.close()
         self._client.state = State.CLOSE_CONNECTION
 
     def append_text_to_chat(self, user: str, text: str):

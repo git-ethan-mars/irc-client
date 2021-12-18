@@ -72,7 +72,7 @@ class MainWindow(QMainWindow):
         self.connect_button.setObjectName('connect_button')
         self.horizontalLayout.addWidget(self.connect_button)
         self.connect_button.clicked.connect(
-            lambda: self.controller.connect(self.channel_line))
+            lambda: self.controller.connect(self.channel_line.text()))
 
     def channel_line_init(self):
         size_policy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
