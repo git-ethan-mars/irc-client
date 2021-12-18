@@ -53,7 +53,7 @@ class TestController(unittest.TestCase):
         self.controller._client.create_socket()
         self.server_running = False
         while not self.server_running:
-            time.sleep(0.1)
+            time.sleep(1)
         self.controller.try_join_server("localhost:8080", "test123")
         self.controller.close_connection()
         mock_thread_start.assert_called_once()
@@ -90,6 +90,9 @@ class TestController(unittest.TestCase):
     @patch.object(threading.Thread, 'start')
     def test_connect_to_channel(self, mock_thread_start, mock_show_users):
         self.controller._client.create_socket()
+        self.server_running = False
+        while not self.server_running:
+            time.sleep(1)
         self.controller.try_join_server("localhost:8080", "test123")
         self.controller.connect("cocking ko ko ko")
         self.controller.close_connection()
