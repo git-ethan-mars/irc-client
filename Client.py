@@ -20,24 +20,27 @@ class Client:
         self.nick = nick
         self.socket.sendall(
             (
-                    f"USER " + self.nick + " " + self.nick + " " + self.nick + " " + self.nick + "\r\n").encode(
+                    "USER " + self.nick + " " + self.nick + " " + self.nick + " " + self.nick + "\r\n").encode(
                 'utf-8'))
-        self.socket.sendall((f"NICK " + self.nick + "\r\n").encode('utf-8'))
+        self.socket.sendall(("NICK " + self.nick + "\r\n").encode('utf-8'))
 
     def join_channel(self, channel: str):
-        self.socket.sendall((f"JOIN " + channel + "\r\n").encode('utf-8'))
+        self.socket.sendall(("JOIN " + channel + "\r\n").encode('utf-8'))
 
-    def request_users(self):
-        self.socket.sendall((f"NAMES " + self.channel + "\r\n").encode('utf-8'))
+    def depart_channel(self,channel:str):
+        self.socket.sendall(("PART " + channel + "\r\n").encode('utf-8'))
+
+    def get_channel_modes(self, channel: str):
+        self.socket.sendall(("MODE " + channel + "\r\n").encode('utf-8'))
 
     def send_message(self, message: str):
-        self.socket.sendall((f"PRIVMSG " + self.channel + " :" + message + "\r\n").encode('utf-8'))
+        self.socket.sendall(("PRIVMSG " + self.channel + " :" + message + "\r\n").encode('utf-8'))
 
     def pong(self):
-        self.socket.sendall((f"PONG" + "\r\n").encode('utf-8'))
+        self.socket.sendall(("PONG" + "\r\n").encode('utf-8'))
 
     def request_channels(self):
-        self.socket.sendall((f"LIST " + "\r\n").encode('utf-8'))
+        self.socket.sendall(("LIST " + "\r\n").encode('utf-8'))
 
     def quit(self):
-        self.socket.sendall((f"QUIT :Bye!" + "\r\n").encode('utf-8'))
+        self.socket.sendall(("QUIT :Bye!" + "\r\n").encode('utf-8'))

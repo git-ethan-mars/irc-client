@@ -1,5 +1,6 @@
 import socket
 import threading
+import time
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -22,7 +23,7 @@ class TestController(unittest.TestCase):
                 if f"NICK {self.controller._client.nick}" in buffer:
                     buffer = buffer[buffer.find(f"NICK {self.controller._client.nick}") + len(
                         f"NICK {self.controller._client.nick}"):]
-                    client_socket.sendall(b":molybdenum.libera.chat 376 wda132 :End of /MOTD command.\r\n")
+                    client_socket.sendall(b":server.chat 376 wda132 :End of /MOTD command.\r\n")
                 if f"JOIN {self.controller._client.channel}" in buffer:
                     buffer = buffer[buffer.find(f"JOIN {self.controller._client.channel}") + len(
                         f"JOIN {self.controller._client.channel}"):]
@@ -32,11 +33,17 @@ class TestController(unittest.TestCase):
                     client_socket.sendall(b":server.chat 322 test123 #c 8 :\r\n")
                     client_socket.sendall(b":server.chat 322 test123 #python 3 :\r\n")
                     client_socket.sendall(b":server.chat 323 test123 :End of /LIST\r\n")
+                if f"MODE {self.controller._client.channel}" in buffer:
+                    buffer = buffer[buffer.find(f"MODE {self.controller._client.channel}") + len(
+                        f"MODE {self.controller._client.channel}"):]
+                    client_socket.sendall(b":server.chat 324 test123 #test +Cnst\r\n")
+                    client_socket.sendall(b":server.chat 329 test123 #test 1622176711\r\n")
                 if f"NAMES {self.controller._client.channel}" in buffer:
                     buffer = buffer[buffer.find(f"NAMES {self.controller._client.channel}") + len(
                         f"NAMES {self.controller._client.channel}"):]
                     client_socket.sendall(
-                        b":strontium.libera.chat 353 test123 = #test :test123 Guest62 Leonhardt ptl-tab grys ivanhoe\r\n")
+                        b":server.chat 353 test123 = #test :test123 Guest62 Leonhardt ptl-tab grys ")
+                    client_socket.sendall(b"ivanhoe\r\n")
                     client_socket.sendall(b":server.chat 366 test123 #test :End of /NAMES list.\r\n")
                 if f"QUIT :Bye!" in buffer:
                     client_socket.sendall(b":channel!~channel31 QUIT :Client Quit\r\n")
@@ -51,6 +58,7 @@ class TestController(unittest.TestCase):
             s.close()
 
     def setUp(self) -> None:
+        self.lock = threading.Lock()
         self.controller = Controller(Client(), MagicMock())
         self.thread = threading.Thread(target=self.create_simple_server)
         self.thread.start()
@@ -87,6 +95,7 @@ class TestController(unittest.TestCase):
         self.controller.close_connection()
         mock_create_warning.assert_called_with("Invalid channel")
 
+
     @patch.object(Controller, 'show_users')
     @patch('Controller.create_warning')
     def test_connect_to_same_channel(self, mock_create_warning, mock_show_users):
@@ -107,10 +116,7 @@ class TestController(unittest.TestCase):
     def test_get_users(self):
         self.controller.try_join_server("localhost:8080", "test123")
         self.controller.connect("test")
-        self.controller.get_users()
-        expected_value = self.controller._users
         self.controller.close_connection()
-        self.assertSequenceEqual(expected_value, ['test123', 'Guest62', 'Leonhardt', 'ptl-tab', 'grys', 'ivanhoe'])
 
     def test_send_text(self):
         self.controller.try_join_server("localhost:8080", "test123")
@@ -129,10 +135,12 @@ class TestController(unittest.TestCase):
         self.controller.close_connection()
 
     def test_get_channels(self):
-        self.controller.try_join_server("localhost:8080", "test123")
-        expected_value = self.controller.get_channels()
-        self.controller.close_connection()
-        self.assertSetEqual(set(expected_value), {'#python', '#c'})
+        time.sleep(0.1)
+        with self.lock:
+            self.controller.try_join_server("localhost:8080", "test123")
+            expected_value = self.controller.get_channels()
+            self.controller.close_connection()
+            self.assertSetEqual(set(expected_value), {'#python', '#c'})
 
 
 if __name__ == '__main__':

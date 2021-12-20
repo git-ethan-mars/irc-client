@@ -1,5 +1,6 @@
 import re
 import socket
+import time
 from threading import Thread
 from time import localtime, strftime
 
@@ -30,6 +31,7 @@ class Controller:
         self._channels = []
         self._data = []
         self._logger = MessageLogger()
+        self._modes = None
 
     def try_join_server(self, server: str, nick: str):
         if nick:
@@ -42,7 +44,7 @@ class Controller:
                     self._listener = Thread(target=self.listen_server)
                     self._listener.start()
                     while self._client.state == State.JOINING_SERVER:
-                        pass
+                        time.sleep(0.1)
                     self._client.state = State.LISTENING
                     if self._client.on_server:
                         self.window.is_manual_exit = False
@@ -63,7 +65,7 @@ class Controller:
         self._client.request_channels()
         self._client.state = State.RECEIVING_CHANNELS
         while self._client.state == State.RECEIVING_CHANNELS:
-            pass
+            time.sleep(0.1)
         channels = re.findall(re.compile("(?<=322 {0} )[#\w\n]*".format(self._client.nick)), " ".join(self._channels)
                               .replace("\n", ""))
         self._channels = []
@@ -80,19 +82,12 @@ class Controller:
                 self.append_text_to_chat(self._client.nick, input_line.text())
             input_line.setText("")
 
-    def get_users(self) -> list:
-        self._client.state = State.RECEIVING_USERS
-        self._client.request_users()
-        while self._client.state == State.RECEIVING_USERS:
-            pass
-        regex = re.compile(f"(?<={self._client.channel} :)([^:]*)")
+    def show_users(self):
+        regex = re.compile(f"(?<=353 {self._client.nick} [=@] {self._client.channel} :)([^:]*)")
         for line in self._data:
-            for users in re.findall(regex, line)[:-1]:
+            for users in re.findall(regex, line):
                 for user in users.replace("\r\n", "").split():
                     self._users.append(user)
-
-    def show_users(self):
-        self.get_users()
         self.window.fill_user_list(self._users)
         self._users = []
         self._data = []
@@ -105,85 +100,108 @@ class Controller:
             if self._client.channel == channel:
                 create_warning("You are already on this channel")
             else:
+                if self._client.channel:
+                    self._client.depart_channel(self._client.channel)
                 self._client.channel = channel
                 self._client.state = State.JOINING_CHANNEL
                 self._client.join_channel(channel)
                 while self._client.state == State.JOINING_CHANNEL:
-                    pass
+                    time.sleep(0.1)
                 self.window.channel_line.setText(self._client.channel)
                 self.window.chat.clear()
-                self._logger.set_filename(f"log/{channel}.txt")
-                self._client.state = State.LISTENING
+                self._client.state = State.RECEIVING_MODES
+                self._client.get_channel_modes(self._client.channel)
+                while self._client.state == State.RECEIVING_MODES:
+                    time.sleep(0.1)
+                if "i" in self._modes:
+                    self._client.is_problem_happen = True
+                    self._warning_text = "Invite only channel"
+                self.show_users()
                 if not self._client.is_problem_happen:
-                    self.show_users()
+                    self._logger.set_filename(f"log/{channel}.txt")
                 else:
                     create_warning(self._warning_text)
+
+
         else:
             create_warning('Invalid channel')
 
     def listen_server(self):
+        buffer = ""
         while True:
             try:
-                line = self._client.socket.recv(1024).decode('utf-8')
+                if "\r\n" in buffer:
+                    temp = buffer.split("\r\n")
+                    message = temp[0]
+                    buffer = "\r\n".join(temp[1:])
+                else:
+                    buffer += self._client.socket.recv(1024).decode('utf-8')
+                    if "\r\n" in buffer:
+                        temp = buffer.split("\r\n")
+                        message = temp[0]
+                        buffer = "\r\n".join(temp[1:])
+                    else:
+                        continue
             except ConnectionAbortedError:
                 break
             except UnicodeDecodeError:
                 continue
-            if self._client.state == State.CLOSE_CONNECTION or not line:
+            print(message)
+            if self._client.state == State.CLOSE_CONNECTION:
                 break
             elif self._client.state == State.JOINING_SERVER:
-                if "This nickname is registered" in line:
+                if "This nickname is registered" in message:
                     self._client.on_server = False
                     self._warning_text = "This nickname is registered"
                     self._client.state = State.LISTENING
-                elif "No nickname given" in line:
+                elif "No nickname given" in message:
                     self._client.on_server = False
                     self._warning_text = "No nickname given"
                     self._client.state = State.LISTENING
-                elif "Erroneous Nickname" in line:
+                elif "Erroneous Nickname" in message:
                     self._client.on_server = False
                     self._warning_text = "Invalid nickname"
                     self._client.state = State.LISTENING
-                elif "Nickname is already in use" in line:
+                elif "Nickname is already in use" in message:
                     self._client.on_server = False
                     self._warning_text = "Nickname is already in use"
                     self._client.state = State.LISTENING
-                elif "End of /MOTD" in line or "End of MOTD" in line:
+                elif "End of /MOTD" in message or "End of MOTD" in message:
                     self._client.on_server = True
                     self._client.state = State.LISTENING
             elif self._client.state == State.JOINING_CHANNEL:
-                if line.split()[1] == "470":
-                    self._client.channel = line.split()[4]
-                elif "Invite only channel" in line or "you must be invited" in line:
-                    self._client.is_problem_happen = True
-                    self._warning_text = "Invite only channel"
-                    self._client.state = State.LISTENING
-                elif "you are banned" in line:
+                if message.split()[1] == "470":
+                    self._client.channel = message.split()[4]
+                elif "you are banned" in message:
                     self._client.is_problem_happen = True
                     self._warning_text = "You have been banned!"
                     self._client.state = State.LISTENING
-                elif "End of /NAMES list" or "End of NAMES list" in line:
+                elif "End of /NAMES list" in message or "End of NAMES list" in message:
                     self._client.is_problem_happen = False
                     self._client.state = State.LISTENING
-
-            elif self._client.state == State.RECEIVING_USERS:
-                self._data.append(line)
-                if "End of /NAMES" or "End of NAMES list" in line:
+                elif "you must be invited" in message:  # 473
+                    self._client.is_problem_happen = True
+                    self._warning_text = "You must be invited"
                     self._client.state = State.LISTENING
+                else:
+                    self._data.append(message)
+            elif self._client.state == State.RECEIVING_MODES:
+                if message.split()[1] == "324":
+                    self._modes = message.split()[4]
+                self._client.state = State.LISTENING
             elif self._client.state == State.LISTENING:
-                if line.startswith("PING"):
+                if message.startswith("PING"):
                     self._client.pong()
-                elif line.split()[1] == "PRIVMSG":
-                    user = str(line.split()[0].split("!")[0][1::])
-                    text = str(line.split(f"PRIVMSG {self._client.channel} :")[-1].strip("\r\n"))
+                elif message.split()[1] == "PRIVMSG":
+                    user = str(message.split()[0].split("!")[0][1::])
+                    text = message.split(f"PRIVMSG {self._client.channel} :")[-1]
                     self.append_text_to_chat(user, text)
             elif self._client.state == State.RECEIVING_CHANNELS:
-                if "End of /LIST" in line or "End of LIST" in line:
-                    self._data.append(line)
+                if "End of /LIST" in message or "End of LIST" in message:
                     self._channels = self._data
                     self._client.state = State.LISTENING
                 else:
-                    self._data.append(line)
+                    self._data.append(message)
 
     def close_connection(self):
         self._client.quit()

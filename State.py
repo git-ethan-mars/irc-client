@@ -4,7 +4,7 @@ class State(enum.Enum):
     JOINING_SERVER = 2
     LISTENING = 3
     RECEIVING_CHANNELS = 4
-    RECEIVING_USERS = 5
+    RECEIVING_MODES = 5
     CLOSE_CONNECTION = 6
 
 
