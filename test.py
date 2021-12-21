@@ -1,6 +1,5 @@
 import socket
 import threading
-import time
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -10,12 +9,12 @@ from Controller import Controller
 
 class TestController(unittest.TestCase):
     def create_simple_server(self):
-        with threading.Lock():
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind(("localhost", 8080))
-            s.settimeout(1)
-            s.listen(1)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(("localhost", 8080))
+        s.settimeout(1)
+        s.listen(1)
+        self.barrier.wait()
         try:
             client_socket, address = s.accept()
             buffer = ""
@@ -58,10 +57,12 @@ class TestController(unittest.TestCase):
             s.close()
 
     def setUp(self) -> None:
-        self.lock = threading.Lock()
+        self.barrier = threading.Barrier(2, timeout=5)
         self.controller = Controller(Client(), MagicMock())
         self.thread = threading.Thread(target=self.create_simple_server)
         self.thread.start()
+        self.barrier.wait()
+
 
     def tearDown(self) -> None:
         self.thread.join()
@@ -94,7 +95,6 @@ class TestController(unittest.TestCase):
         self.controller.connect("")
         self.controller.close_connection()
         mock_create_warning.assert_called_with("Invalid channel")
-
 
     @patch.object(Controller, 'show_users')
     @patch('Controller.create_warning')
@@ -135,12 +135,10 @@ class TestController(unittest.TestCase):
         self.controller.close_connection()
 
     def test_get_channels(self):
-        time.sleep(0.1)
-        with self.lock:
-            self.controller.try_join_server("localhost:8080", "test123")
-            expected_value = self.controller.get_channels()
-            self.controller.close_connection()
-            self.assertSetEqual(set(expected_value), {'#python', '#c'})
+        self.controller.try_join_server("localhost:8080", "test123")
+        expected_value = self.controller.get_channels()
+        self.controller.close_connection()
+        self.assertSetEqual(set(expected_value), {'#python', '#c'})
 
 
 if __name__ == '__main__':

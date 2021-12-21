@@ -121,10 +121,18 @@ class Controller:
                     self._logger.set_filename(f"log/{channel}.txt")
                 else:
                     create_warning(self._warning_text)
-
-
         else:
             create_warning('Invalid channel')
+
+    def handle_channel_error(self, error: str):
+        self._client.is_problem_happen = True
+        self._warning_text = error
+        self._client.state = State.LISTENING
+
+    def handle_server_error(self, error: str):
+        self._client.on_server = False
+        self._warning_text = error
+        self._client.state = State.LISTENING
 
     def listen_server(self):
         buffer = ""
@@ -151,17 +159,11 @@ class Controller:
                 break
             elif self._client.state == State.JOINING_SERVER:
                 if "This nickname is registered" in message:
-                    self._client.on_server = False
-                    self._warning_text = "This nickname is registered"
-                    self._client.state = State.LISTENING
+                    self.handle_server_error("This nickname is registered")
                 elif "No nickname given" in message:
-                    self._client.on_server = False
-                    self._warning_text = "No nickname given"
-                    self._client.state = State.LISTENING
+                    self.handle_server_error("No nick given")
                 elif "Erroneous Nickname" in message:
-                    self._client.on_server = False
-                    self._warning_text = "Invalid nickname"
-                    self._client.state = State.LISTENING
+                    self.handle_server_error("Invalid nickname")
                 elif "Nickname is already in use" in message:
                     self._client.on_server = False
                     self._warning_text = "Nickname is already in use"
@@ -173,16 +175,14 @@ class Controller:
                 if message.split()[1] == "470":
                     self._client.channel = message.split()[4]
                 elif "you are banned" in message:
-                    self._client.is_problem_happen = True
-                    self._warning_text = "You have been banned!"
-                    self._client.state = State.LISTENING
+                    self.handle_channel_error("You have been banned")
                 elif "End of /NAMES list" in message or "End of NAMES list" in message:
                     self._client.is_problem_happen = False
                     self._client.state = State.LISTENING
-                elif "you must be invited" in message:  # 473
-                    self._client.is_problem_happen = True
-                    self._warning_text = "You must be invited"
-                    self._client.state = State.LISTENING
+                elif "you must be invited" in message:
+                    self.handle_channel_error("You must be invited")
+                elif "Cannot join channel" in message:
+                    self.handle_channel_error("Cannot join channel")
                 else:
                     self._data.append(message)
             elif self._client.state == State.RECEIVING_MODES:
